@@ -1,0 +1,151 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+
+	<title>Websocket RC</title>
+
+
+	<script type="text/javascript">
+		var flag = false; // This makes it ignore repeat presses
+		var currentlyPressed = [false, false, false, false]; // Prevents up and down from being pressed at the same time. False is up, True is down
+
+		document.onkeydown = checkKey;
+		document.onkeyup = flagFalse;
+
+		function flagFalse(e) {
+			flag = false;
+			if (currentlyPressed[e.keyCode - 37]) {
+				currentlyPressed[e.keyCode - 37] = false;
+
+				if (e.keyCode == '38') {
+					motorStop();
+					document.getElementById('up_arrow').style.visibility = 'hidden';
+					console.log("**up lifted!");
+				} else if (e.keyCode == '40') {
+					motorStop();
+					document.getElementById('down_arrow').style.visibility = 'hidden';
+					console.log("**down lifted!");
+				} else if (e.keyCode == '37') {
+					turnCenter();
+					document.getElementById('left_arrow').style.visibility = 'hidden';
+					console.log("**left lifted!");
+				} else if (e.keyCode == '39') {
+					turnCenter();
+					document.getElementById('right_arrow').style.visibility = 'hidden';
+					console.log("**right lifted!");
+				}
+			}
+		}
+
+		function checkKey(e) {
+			if ((e.keyCode - 37 < 4) & ((connection.readyState == 3) || connection.readyState == null)) {
+				alert("ERROR: Not connected");
+				return;
+			} else {
+				e = e || window.event;
+				if (!currentlyPressed[e.keyCode - 37]) {
+					if (e.keyCode == '38' && !currentlyPressed[3]) { // If the up arrow is depressed and down arrow is currently NOT depressed
+						forwardGo(); // Send the signal to go forward
+						document.getElementById('up_arrow').style.visibility = 'visible'; // Turn on the arrow
+						console.log("up depressed!");
+						currentlyPressed[e.keyCode - 37] = true; // Make a note that this key is depressed
+					} else if (e.keyCode == '40' && !currentlyPressed[1]) {
+						backwardGo();
+						document.getElementById('down_arrow').style.visibility = 'visible';
+						console.log("down depressed!");
+						currentlyPressed[e.keyCode - 37] = true;
+					} else if (e.keyCode == '37' && !currentlyPressed[2]) {
+						turnLeft();
+						document.getElementById('left_arrow').style.visibility = 'visible';
+						console.log("left depressed!");
+						currentlyPressed[e.keyCode - 37] = true;
+					} else if (e.keyCode == '39' && !currentlyPressed[0]) { // If 39 (right) is pressed and 37 (left) IS NOT currently pressed
+						turnRight();
+						document.getElementById('right_arrow').style.visibility = 'visible';
+						console.log("right depressed!");
+						currentlyPressed[e.keyCode - 37] = true;
+					}
+					flag = true;
+
+				}
+			}
+
+		}
+
+		function connect() {
+			console.log("Connecting...");
+			connection = new WebSocket(document.getElementById('ipAddress').value); //, ['soap', 'xmpp']);
+
+			connection.onopen = function (event) {
+				connection.send("ping");
+				document.getElementById('connectButton').innerHTML = "disconnect";
+				document.getElementById('connectButton').setAttribute('onClick', 'connection.close()');
+
+				connection.onmessage = function (event) {
+					if (event.data == "pong") {
+						console.log("Connection established!");
+					} else {
+						console.log("Server: " + event.data);
+					}
+				}
+			}
+
+			connection.onclose = function (event) {
+				console.log("Disconnecting.");
+				document.getElementById('connectButton').innerHTML = "connect";
+				document.getElementById('connectButton').setAttribute('onClick', 'connect()');
+			}
+		}
+
+		function forwardGo() {
+			connection.send("fg");
+		}
+
+		function backwardGo(event) {
+			connection.send("bg");
+		}
+
+		function motorStop(event) {
+			connection.send("s");
+		}
+
+		function turnLeft() {
+			connection.send("l");
+		}
+
+		function turnRight(event) {
+			connection.send("r");
+		}
+
+		function turnCenter(event) {
+			connection.send("c");
+		}
+	</script>
+</head>
+
+<body>
+	<div style="text-align:center">
+		<img id="up_arrow" src="arrow_small_up.png" style="margin:auto 0;visibility:hidden">
+	</div>
+	<div style="text-align:center;padding-left:30%;padding-right:30%;">
+		<img id="left_arrow" src="arrow_small_left.png" style="margin-bottom:15%;visibility:hidden">
+		<img src="car_small.jpg" style="max-width:25%;">
+		<img id="right_arrow" src="arrow_small_right.png" style="margin-bottom:15%;visibility:hidden">
+
+	</div>
+	<div style="text-align:center">
+		<img id="down_arrow" src="arrow_small_down.png" style="visibility:hidden">
+	</div>
+
+	<div id="connection" style="margin-top:5%">
+		<div>
+			<input id="ipAddress" type="text" value="ws://localhost:9001">
+			<button id="connectButton" type="submit" onclick="connect()">connect</button>
+		</div>
+	</div>
+</body>
+
+</html>
